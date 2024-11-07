@@ -8,6 +8,7 @@ from transformers import AutoTokenizer, AutoModel
 import streamlit as st
 import logging
 import numpy as np
+import json
 
 logger = logging.getLogger("movie-recommender")
 logging.basicConfig(level=logging.INFO)
@@ -50,47 +51,22 @@ logger.info("Calculating default clusters ...")
 movies_clusters = kmeans.predict(movies_embeddings)
 logger.info("Finish clustering")
 
+with open("assets/data.json", "r") as f:
+    general_data = json.load(f)
+
 st.title("Movie Recommender")
 
 with st.sidebar:
     st.header("Refine your search")
     st.subheader("Choose your preferred genres")
-    options = st.multiselect(
+    genre_options = st.multiselect(
         "What kind of genre are you interested in?",
-        [
-            "Action",
-            "Adventure",
-            "Animation",
-            "Aniplex",
-            "BROSTA TV",
-            "Carousel Productions",
-            "Comedy",
-            "Crime",
-            "Documentary",
-            "Drama",
-            "Family",
-            "Fantasy",
-            "Foreign",
-            "GoHands",
-            "History",
-            "Horror",
-            "Mardock Scramble Production Committee",
-            "Music",
-            "Mystery",
-            "Odyssey Media",
-            "Pulser Productions",
-            "Rogue State",
-            "Romance",
-            "Science Fiction",
-            "Sentai Filmworks",
-            "TV Movie",
-            "Telescene Film Group Productions",
-            "The Cartel",
-            "Thriller",
-            "Vision View Entertainment",
-            "War",
-            "Western",
-        ],
+        general_data["movie_genres"],
+    )
+    st.subheader("Choose your preferred languages")
+    language_options = st.multiselect(
+        "What kind of languages do you prefer?",
+        list(general_data["languages"].keys()),
     )
     st.subheader("Choose your preferred ratings")
     start_rating, end_rating = st.select_slider(
@@ -100,6 +76,12 @@ with st.sidebar:
     )
     st.subheader("Top 5 Ranking")
     top5 = st.checkbox("TOP 5")
+    st.subheader("Release Date")
+    start_release_date, end_release_date = st.select_slider(
+        "Select the range for your movie",
+        options=list(range(1874, 2021)),
+        value=[1874, 2020],
+    )
 prompt = st.chat_input("What kind of movie do you want to watch?")
 if prompt:
     embeded_prompt = embed(prompt)
@@ -109,7 +91,17 @@ if prompt:
         (tmp_df["vote_average"] >= start_rating)
         & (tmp_df["vote_average"] <= end_rating)
     ]
+    tmp_df = tmp_df[
+        tmp_df["original_language"].isin(
+            [general_data["languages"][k] for k in language_options]
+        )
+    ]
     tmp_df = tmp_df.sort_values(by="vote_average", ascending=False)
+    tmp_df = tmp_df[
+        (tmp_df["release_date"] >= str(start_release_date))
+        & (tmp_df["release_date"] <= str(end_release_date))
+    ]
+    tmp_df = tmp_df[tmp_df["genres"].str.contains("|".join(genre_options), regex=True)]
     if top5:
         tmp_df = tmp_df.head(5)
     st.dataframe(tmp_df)
