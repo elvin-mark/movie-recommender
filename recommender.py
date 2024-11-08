@@ -91,17 +91,32 @@ if prompt:
         (tmp_df["vote_average"] >= start_rating)
         & (tmp_df["vote_average"] <= end_rating)
     ]
-    tmp_df = tmp_df[
-        tmp_df["original_language"].isin(
-            [general_data["languages"][k] for k in language_options]
-        )
-    ]
+    if len(language_options) > 0:
+        tmp_df = tmp_df[
+            tmp_df["original_language"].isin(
+                [general_data["languages"][k] for k in language_options]
+            )
+        ]
     tmp_df = tmp_df.sort_values(by="vote_average", ascending=False)
     tmp_df = tmp_df[
         (tmp_df["release_date"] >= str(start_release_date))
         & (tmp_df["release_date"] <= str(end_release_date))
     ]
-    tmp_df = tmp_df[tmp_df["genres"].str.contains("|".join(genre_options), regex=True)]
+    if len(genre_options) > 0:
+        tmp_df = tmp_df[
+            tmp_df["genres"].str.contains("|".join(genre_options), regex=True)
+        ]
     if top5:
         tmp_df = tmp_df.head(5)
-    st.dataframe(tmp_df)
+    st.dataframe(
+        tmp_df[
+            [
+                "original_title",
+                "overview",
+                "genres",
+                "original_language",
+                "release_date",
+                "title",
+            ]
+        ]
+    )
